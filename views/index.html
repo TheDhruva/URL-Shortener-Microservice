@@ -15,15 +15,49 @@
     <h1>URL Shortener Microservice</h1>
     <main>
       <section>
-        <form action="api/shorturl" method="POST">
+        <form id="shorturl-form">
           <fieldset>
             <legend>URL Shortener</legend>
             <label for="url_input">URL:</label>
-            <input id="url_input" type="text" name="url" placeholder="https://www.freecodecamp.org/" />
-            <input type="submit" value="POST URL" />
+            <input id="url_input" type="text" name="url" placeholder="https://www.freecodecamp.org/" required />
+            <input type="submit" value="POST URL" id="submit-btn" />
           </fieldset>
         </form>
+        <div id="result" style="margin-top: 1rem;"></div>
       </section>
+      <script>
+        const form = document.getElementById('shorturl-form');
+        const resultEl = document.getElementById('result');
+        const submitBtn = document.getElementById('submit-btn');
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const url = form.url.value.trim();
+          if (!url) return;
+          submitBtn.disabled = true;
+          resultEl.textContent = 'Loading...';
+          resultEl.style.color = '';
+          try {
+            const res = await fetch('/api/shorturl', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: 'url=' + encodeURIComponent(url)
+            });
+            const data = await res.json();
+            submitBtn.disabled = false;
+            if (data.error) {
+              resultEl.textContent = 'Error: ' + data.error;
+              resultEl.style.color = '#c00';
+            } else {
+              resultEl.innerHTML = 'Short URL: <a href="/api/shorturl/' + data.short_url + '" target="_blank">' + window.location.origin + '/api/shorturl/' + data.short_url + '</a>';
+              resultEl.style.color = '#0a0';
+            }
+          } catch (err) {
+            submitBtn.disabled = false;
+            resultEl.textContent = 'Error: request failed. Try again.';
+            resultEl.style.color = '#c00';
+          }
+        });
+      </script>
     </main>
     <footer>
       <p>By <a href="https://www.freecodecamp.org/">freeCodeCamp</a></p>
