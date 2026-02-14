@@ -22,7 +22,7 @@ app.get('/', function (req, res) {
 /*---------------------------------------MY CODE-------------------------------------------*/
 /*-----------------------------------------------------------------------------------------*/
 
-// MongoDB connection (optional - fallback to in-memory if not available)
+// Use MongoDB only when DB_URL is set; otherwise use in-memory (so FCC tests pass with one store)
 const dbUrl = process.env.DB_URL || process.env.MONGO_URI;
 const useMongo = Boolean(dbUrl);
 
@@ -32,24 +32,19 @@ if (useMongo) {
     .catch((err) => console.error('MongoDB connection error:', err.message));
 }
 
-// ShortUrl model (used when MongoDB is connected)
 const shortUrlSchema = new mongoose.Schema({
   original_url: { type: String, required: true },
   short_url: { type: Number, required: true, unique: true }
 });
 const ShortUrl = mongoose.model('ShortUrl', shortUrlSchema);
 
-// In-memory fallback for when MongoDB is not available (e.g. FreeCodeCamp test env)
-const memoryStore = new Map(); // short_url (number) -> original_url (string)
-const memoryStoreByUrl = new Map(); // original_url -> short_url
+// In-memory store: used only when DB_URL is not set (same store for POST and GET)
+const memoryStore = new Map();       // short_url (number) -> original_url (string)
+const memoryStoreByUrl = new Map(); // original_url -> short_url (number)
 let nextShort = 1;
 
-function isMongoConnected() {
-  return mongoose.connection.readyState === 1;
-}
-
 async function findOrCreateShortUrl(originalUrl) {
-  if (isMongoConnected()) {
+  if (useMongo) {
     let doc = await ShortUrl.findOne({ original_url: originalUrl });
     if (doc) return { original_url: doc.original_url, short_url: doc.short_url };
     const count = await ShortUrl.countDocuments();
@@ -66,11 +61,8 @@ async function findOrCreateShortUrl(originalUrl) {
     doc = await ShortUrl.create({ original_url: originalUrl, short_url: short });
     return { original_url: doc.original_url, short_url: doc.short_url };
   }
-  // In-memory fallback (matches FCC example: short_url 1, 2, 3...)
   const existing = memoryStoreByUrl.get(originalUrl);
-  if (existing != null) {
-    return { original_url: originalUrl, short_url: existing };
-  }
+  if (existing != null) return { original_url: originalUrl, short_url: existing };
   const short = nextShort++;
   memoryStore.set(short, originalUrl);
   memoryStoreByUrl.set(originalUrl, short);
@@ -78,7 +70,7 @@ async function findOrCreateShortUrl(originalUrl) {
 }
 
 async function getOriginalUrl(shortUrlNum) {
-  if (isMongoConnected()) {
+  if (useMongo) {
     const doc = await ShortUrl.findOne({ short_url: shortUrlNum });
     return doc ? doc.original_url : null;
   }
