@@ -9,8 +9,13 @@ app.use(cors({ origin: '*' }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Static front-end (fCC provides their own, but useful locally)
-app.use(express.static('public'));
+// Serve static files from the /public directory as required by FCC
+app.use('/public', express.static(process.cwd() + '/public'));
+
+// Serve the main FCC HTML file from views folder
+app.get('/', (req, res) => {
+  res.sendFile(process.cwd() + '/views/index.html');
+});
 
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log('MongoDB connected'))
